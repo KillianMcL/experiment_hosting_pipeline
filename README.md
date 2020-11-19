@@ -1,5 +1,5 @@
 # Psychology Online Experiment Hosting Pipeline: Demonstration Task 
-###### Authors: *Ryan Carlson* and *Killian L. McLoughlin*
+###### Authors: *Killian L. McLoughlin* and *Ryan Carlson*
 
 ---
 
