@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<!-- The first thing to note is the document type declaration in the line above. This ensures that any compiler or web browser interacting with the script correctly identifies it as a HTML file and runs it correctly. 
+Also note that the name of this HTML file is 'index.html'. This is both a convention but can also function to identify this script as source of the webpage. 
+
+HTML provides the structure of web pages. Tags like <head> identify the various components that make up a webpage. These primarily affect the layout of your content. Below, the <title> tag is used by browers to display text in the tab which opens when the webpage runs.-->
+<html>
+    <head>
+        <title>jsPsych Example Task</title>
+        
+        <!-- FIREBASE -->
+        <!-- In order for the webpage to connect with Firebase and ultimatly store the results of the experiment, we need to tell it where it can find the Firebase code library. Libraries must be called within <script tags>, as can be seen below. These calls can either reference files located on the same hosting environment as the webpage (e.g., in the same Github repo or server), or URLs which host the source code. Below is an example of the later. Loading the jsPsych plugins, which will be shown later, uses the former method. -->
+        <script src="https://www.gstatic.com/firebasejs/7.2.3/firebase-app.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/7.2.3/firebase-auth.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/7.2.3/firebase-database.js"></script>
+
+        <script>
+            //Within this <script> tag, we initialize a variable using the 'var' keyword. This variable will be used to store the credentials for the Firebase Realtime database where you would like your results to be stored. 
+            
+            //The instructions for setting up this database and acquiring the credentials are detailed in our blog post. Once generated, the information below can be copied from your database console on Firebase and pasted into this document.
+          var firebaseConfig = {
+            apiKey: "",
+            authDomain: "",
+            databaseURL: "",
+            projectId: "",
+            storageBucket: "",
+            messagingSenderId: "",
+            appId: ""
+          };
+          
+            //Using the credentials stored in the 'firebaseConfig' variable, a reference to the database is created:
+          firebase.initializeApp(firebaseConfig);
+        var database = firebase.database();
+            
+            //The following code block instructs the webpage on how to record new entried in the database.
+            firebase.auth().signInAnonymously().catch(function(error) {
+            var errorCode = error.code;
+            var errorMessage = error.message;
+        });      
+        firebase.auth().onAuthStateChanged(function(user) {
+            if (user) {
+                var isAnonymous = user.isAnonymous;
+                var uid = user.uid;
+            }
+        });
+        </script>
+        
+        <!-- Here, we reference the plugin files contained in the jsPsych folder which is stored alongside this file in our GitHub repo. In jsPsych, each plugin corresponds to a differnt type of question or trial. For instance, `jspsych-instructions.js` contains the code to execute instruction-type trials. While similar, different plugins frequently have different parameters that can be used with them, and thus require differnt syntax when constructing them. The jsPsych webpage is the best resource for finding the plugins that you need and the paramters that they require.
+
+        Note that it is only necessary to reference the plugins for the trials that appear in your complete experiment. If, for some reason, I was developing a task that had no instructions, I would have no need to include a reference to `jspsych-instructions.js` in my code.-->
+        <script type="text/javascript" src="jspsych-6.1.0/jspsych.js"></script>
+        <script type='text/javascript' src='jspsych-6.1.0/plugins/jspsych-external-html.js'></script>
+        <script type="text/javascript" src="jspsych-6.1.0/plugins/jspsych-instructions.js"></script>
+        <script type="text/javascript" src="jspsych-6.1.0/plugins/jspsych-survey-likert.js"></script>
+        <script type="text/javascript" src="jspsych-6.1.0/plugins/jspsych-html-slider-response.js"></script>
+        <script type="text/javascript" src="jspsych-6.1.0/plugins/jspsych-survey-multi-choice.js"></script>
+        <script type='text/javascript' src='jspsych-6.1.0/plugins/jspsych-survey-text.js'></script>
+        <script type='text/javascript' src='jspsych-6.1.0/plugins/jspsych-html-button-response.js'></script>
+        <link href="jspsych-6.1.0/css/jspsych.css" rel="stylesheet" type="text/css"></link>
+        
+        <!-- Within the <style> tag, we encounter the second of the three coding languages typically used to construct webpages: CSS. As the name of the tag <style> implies, CSS governs the appearance of a webpage, from text color and background images, to the placement of elements. 
+
+        We define CSS styles here at the top of the page, and then reference the style by the name we give it (e.g., `instructions` when we want the style to be applied to an element on the page. That is, until we reference or 'call' the style within an tag, it will not be applied.
+
+        There are many ways to associate CSS styles with elements on the webpage, we won't go into the details of those here. Just note that different methods are denoted by different symbols prepending the name of the style (e.g., '.', '#')-->
+        <style type="text/css">
+            .instructions {
+                margin-right: 300px;
+                margin-left: 300px;
+                text-align: left;
+            }
+        </style>
+        
+    </head>
+    <body></body>
+
+    <!-- The final language used in the construction of webpages is javaScript. This language controls the dynamic and interactive functionalty of any webpage. It makes sense then that jsPsych is a javaScript library. As a result the structure and content of your experiment will be coded in javaScript, using the jsPsych plugin.
+
+    In the task that we demonstrate here, participants view moral vignettes which they respond to by answering multiple-choice questions, Likert scales, and numeric sliders. This demonstration allows us to showcase the basic steps and code required to create and run a simple behavioral task of the kind typically used by social psychologists. However, jsPsych allows for far greater functionality and customization than we require here. For instance, you can use javaScript and the jsPsych directory to modify any plugin. We allude to these 'advanced' features in our blog, but do not use them here.-->
+    <script type='text/javascript'>
+        
+        //Before diving into jsPsych proper, we find it useful to create or upload any other resources which your task will require (e.g., stimuli) and code certain features of your design (e.g., randomization). 
+        //For our demonstration task, we create three versions of a moral vignette corresponding to three experimental conditions. In each condition an actor's actions result in harm but these actions vary across each condition as to whether they were performed intentionally, unintentionall, or under ambigous intentions. For demonstration purposes, only one vignette is used. However, the code is scalable and the arrays below could have had more vignettes added to them,
+        //In addition to the text of the vignettes, the nested `vignettes` arrays below also contain the name of the actor in the vignette and answers to a comprehension quesion about the vignette
+        
+        //Condition presentation order
+        var order = [0,0,0,0,0,0,1,1,1,1,1,1,2,2,2,2,2,2];
+        var order = jsPsych.randomization.shuffle(order);
+        
+        //Vignette presentation order
+        var vignette_order = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17];
+        var vignette_order = jsPsych.randomization.shuffle(vignette_order);
+        
+        var vignettes = [
+            //Unintentional
+           [
+               'Sofia is cooking dinner for a family gathering. She has been perfecting a curry recipe. Sofia does not know her cousin attending the dinner has a peanut allergy. Sofia adds peanuts to every plate and serves. Her cousin takes a large mouthful. Within a few minutes, her cousin struggles to breathe and the family rush for her epipen. '
+            ],
+            
+            //Intentional
+            [
+                'Sofia is cooking dinner for a family gathering. She has been perfecting a curry recipe. Sofia knows her cousin attending the dinner has a peanut allergy. Sofia adds peanuts to every plate and serves. Her cousin takes a large mouthful. Within a few minutes, her cousin struggles to breathe and the family rush for her epipen. '
+            ],
+            //Ambiguous
+            [ 
+                'Sofia is cooking dinner for a family gathering. She has been perfecting a curry recipe. Sofia lays the table and passes out drinks to everyone. Sofia adds peanuts to every plate and serves. Her cousin takes a large mouthful. Within a few minutes, her cousin struggles to breathe and the family rush for her epipen. '
+                ],
+            //Comprehension questions
+            [
+ "What is Sofia's cousin allergic to? "
+                ],
+            //Actor
+            [
+               'Sofia '
+            ],
+            //Correct answer
+            [
+                'Peanuts'
+            ],
+            //Other option 1
+            [
+                'People'
+            ],
+            //Other option 2
+            [
+                'Legumes'
+            ]
+        ];
+        
+        //Lists of randomized vignettes, in the appropriate condition
+        var vignettes_rand = [[],[],[],[],[],[],[],[]];
+        
+        //Number of conditions + 2 (for comprehension questions and actors) + 3 (for each answer to the MCQs)
+        var n_elements = 8;
+        
+        //Number of vignettes
+        var n_vignettes = 18;
+        
+        //The following two loops take the existing vignettes and add them to a new list in a shuffled order that corresponds to the order
+        //that is saved in 'shuffled_order'. It does this while preserving the order of the vignettes across the three conditions and the comprehension questions
+        //I.e., michael, michael, michael, dietary requirements, michael?
+        var j;
+        var i;
+        //For every element in the list of vignettes (i.e., unintentional, intentional, ambiguous, and comprehension questions) . .. 
+        for (j = 0; j < n_elements; j++) {
+            // . . . go through each of the elements in each condition list . . . 
+            for(i = 0; i < n_vignettes; i++) {
+                // . . . and, to the list of randomised vignettes (currently black), add the vignette from the corresponding condition . . .
+                //. . . at the position marked in the shuffled vignette_order variable
+                vignettes_rand[j][i] = vignettes[j][vignette_order[i]]
+                
+            }
+        };
+        
+        //Here we create a timeline variable which corresponds to an empty array.
+        //Each time we use jsPsych to create an experimental trial variable, we will add or append (i.e., `push`) that trial to this array.
+        //The order in which the trials are added determines the order in which they are executed and therefore the order in which they are viewed by participants
+        var timeline = [];
+        
+        //Before begining the task proper, we take the ususal step of presenting a consent page to participants. 
+        //Creating a separate HTML document (in this case, `consent.html`) saves us space in the main task. That is, we do not have to take up hundreds of lines of code typing out the consent for here.
+        //The function below checks whether or not a participant has checked the consent checkbox that appears in our consent HTML document. If not, they are told to agree if they wish to continue.
+        //This function is called during a jsPsych trial `external-html`.
+        var check_consent = function(elem) {
+            if (document.getElementById('consent_checkbox').checked) {
+                return true;
+            }
+            else {
+                alert("If you wish to participate, you must check the box next to the statement 'I agree to participate in this study.'");
+                return false;
+            }
+            return false; 
+        };
+        
+        //The `consent` variable is a jsPsych trial variable and, as such, shares many features with other trials we create using the jsPsych library. For instance, it includes the `type` variable which descibes the type of trial being used. jsPsych has a wide range of trial types that can be called, each with their own slightly different structure. 
+        //Here, participnats are presented with an external HTML webpage, in this case `consent.html`. The function defined above is called to ensure that consent to participate has been given. 
+         var consent = {
+            type:'external-html',
+            url: "consent.html",
+            cont_btn: "start",
+            check_fn: check_consent
+        };
+        timeline.push(consent);
+    
+        //Here we define an instruction trial which simply displays HTML-formatted text to the participant. Notice the similar strucure to the trial above. Each argument is provided in a name:value stucture and nested within a JavaScript object (denoted by curly braces - '{}').
+        //Some things to note:
+        //The `pages` element is constructed using HTML tags that allow for some customisation of how the text appear to participants. In this instance, we have references the CSS class `isntructions`, which we defined above. This overwrites the default appearance of text in favor of left-aligned text with greater padding between the page margins and the text.
+        //The `on_finish` can be used in almost any trial and is usually used to build a function that does something with the data from that trial. In all cases, this function only gets executed by jsPsych after the trial has concluded. Here, we wish to keep track of the vignettes in the order that participants saw them. So, we define a function that stores that information. Specifically, we create a variable for the data object and assign it the vignette order. The data object descibes the information that any trial stores. By default this includes information like reaction times and buttons pressed or options selected. The syntax below demonstrates how to store additional information in data so that it gets sent to our database whent he experiment ends.
+        var instructions = {
+            type: 'instructions',
+            pages: ["<div class = 'instructions'><p>In this study, you will view a short <b>storiy</b>. You will need to read it and then answer questions about different aspects of the story.</p><p>Please read carefully as you will be asked a comprehension question. <b>A bonus payment</b> will be given to you if you get the correct answer to one of these questions, chosen randomly.</p><p>Please click <b>next</b> to begin the task.</p></div>"],
+            show_clickable_nav: true,
+            on_finish: function(data) {
+                data.vignettes = vignettes_rand
+            }
+        };
+        //This code, outside the body of the trial syntax, adds the element to the timeline variable. Note that this code does not implement the trial. That will come later.  
+        timeline.push(instructions);
+        
+        //Next, we create a loop which will repeat the same trials a set number of times, dictates by the `n_trials` variable.
+        //Those of us familiar with programming will recognise the syntax for achieving this as a for loop. In JavaScript, we typically initialise a for loop by creating a sentienl or dummy variable that increments by s et amount across each itteration of the loop. In this case, `k` is that variable. We initialise k as 0 and tell the loop to run so long as K is less than the number of trial repetitions that we want. Obviously this would continue in an infinite loop if k is always 0 and n_trials is always greater than 0, so the final component in the first line of the loop, `k++`, tells JavaSctipt to increase k by 1 on each iteration of the loop.
+        //As we only have one demonstration vignette, we only loop once. 
+        var n_trials = 1;
+        var k;
+        for (k = 0; k < n_trials; k++) {
+            
+            //For our slider scales, we want a randomised start location. Using jsPSych's `randomization.sampleWithoutReplacement` function, we randomly select an integer from the range of integers allowed by each slider question. The choosen value will then be fed into the appropriate trial as the slider starting point.
+            var start1 = jsPsych.randomization.sampleWithoutReplacement([1, 2, 3, 4, 5, 6, 7], 1)[0];
+            var start2 = jsPsych.randomization.sampleWithoutReplacement([1, 2, 3, 4, 5, 6, 7], 1)[0];
+            var start3 = jsPsych.randomization.sampleWithoutReplacement([1, 2, 3, 4, 5, 6, 7], 1)[0];
+            var start4 = jsPsych.randomization.sampleWithoutReplacement([1, 2, 3, 4, 5, 6, 7], 1)[0];
+            var start5 = jsPsych.randomization.sampleWithoutReplacement([1, 2, 3, 4, 5, 6, 7], 1)[0];
+            var start6 = jsPsych.randomization.sampleWithoutReplacement([1, 2, 3, 4, 5, 6, 7], 1)[0];
+            var start7 = jsPsych.randomization.sampleWithoutReplacement([1, 2, 3, 4, 5, 6, 7], 1)[0];
+            var start8 = jsPsych.randomization.sampleWithoutReplacement([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100], 1)[0];
+            
+            //This trial displays the moral vignette by calling the k-th vignette in our shuffled vignettes variable
+            var disp_vignette = {
+                type: 'instructions',
+                pages: ['<div class = "instructions"><p><b>Read</b> the story below <b>carefully</b> and when you are done click Next to answer questions about it:</p><br><br><p style="font-size:20px;"><i>' + vignettes_rand[order[k]][k] + '</i></p></div>'],
+                show_clickable_nav: true
+            };
+            timeline.push(disp_vignette);
+            
+            //We then ask participants a number of questions about the vignette. Again, we use the shuffled vignettes and the randomised start locations
+            var goodness ={
+                type: 'html-slider-response',
+                stimulus: '<div class = "instructions"><p><b>Read</b> the story below <b>carefully</b> and answer the questions that follow:</p><br><br><p style="font-size:20px;"><i>' + vignettes_rand[order[k]][k] + '</i></p><br><br></div><p><b>How good do you think ' + vignettes_rand[4][k] + ' is as a person?</b></p>',
+                labels: ["1</p>Mainly a bad person", "2</p>", "3</p>", "4</p>Neither a bad nor a good person", "5</p>", "6</p>", "7</p>Mainly a good person"],
+                require_movement: true,
+                slider_width: 800,
+                min: 1,
+                max: 7,
+                step: 1,
+                start: start1,
+                on_finish: function(data){
+                    data.scale_start = start1
+                }
+            };
+            timeline.push(goodness);
+
+            var certainty ={
+                type: 'html-slider-response',
+                stimulus: '<div class = "instructions"><p><b>Read</b> the story below <b>carefully</b> and answer the questions that follow:</p><br><br><p style="font-size:20px;"><i>' + vignettes_rand[order[k]][k] + '</i></p><br><br></div><p><b>How certain are you that ' + vignettes_rand[4][k] + ' is a good or bad person?</b></p>',
+                labels: ["1</p>Very uncertain", "2</p>", "3</p>", "4</p>Neither uncertain nor certain", "5</p>", "6</p>", "7</p>Very certain"],
+                require_movement: true,
+                slider_width: 800,
+                min: 1,
+                max: 7,
+                step: 1,
+                start: start2,
+                on_finish: function(data){
+                    data.scale_start = start2
+                }
+            };
+            timeline.push(certainty);
+            
+            var clarity ={
+                type: 'html-slider-response',
+                stimulus: "<div class = 'instructions'><p><b>Read</b> the story below <b>carefully</b> and answer the questions that follow:</p><br><br><p style='font-size:20px;'><i>" + vignettes_rand[order[k]][k] + "</i></p><br><br></div><p><b>How clear are " + vignettes_rand[4][k] + "'s intentions in this story?</b></p>",
+                labels: ["1</p>Completely unclear", "2</p>", "3</p>", "4</p>", "5</p>", "6</p>", "7</p>Completely clear"],
+                require_movement: true,
+                slider_width: 800,
+                min: 1,
+                max: 7,
+                step: 1,
+                start: start3,
+                on_finish: function(data){
+                    data.scale_start = start3
+                }
+            };
+            timeline.push(clarity);
+            
+            if(k == 8){
+                var attn_check ={
+                    type: 'html-slider-response',
+                    stimulus: "<div class = 'instructions'><p><b>Read</b> the story below <b>carefully</b> and answer the questions that follow:</p><br><br><p style='font-size:20px;'><i>" + vignettes_rand[order[k]][k] + "</i></p><br><br></div><p><b>This item is to check that you are paying attention. Please slide the slider all the way to the left before continuing.</b></p>",
+                    labels: ["1</p>Not a lot", "2</p>", "<p>3</p>", "4</p>Neither a lot nor not a lot", "5</p>", "6</p>", "7</p>A lot"],
+                    require_movement: true,
+                    slider_width: 800,
+                    min: 1,
+                    max: 7,
+                    step: 1,
+                    start: 7
+                }
+                timeline.push(attn_check);
+                };
+            
+            
+            var praise_blame ={
+                type: 'html-slider-response',
+                stimulus: "<div class = 'instructions'><p><b>Read</b> the story below <b>carefully</b> and answer the questions that follow:</p><br><br><p style='font-size:20px;'><i>" + vignettes_rand[order[k]][k] + "</i></p><br><br></div><p><b>How much praise or blame does " + vignettes_rand[4][k] + " deserve for their actions?</b></p>",
+                labels: ["1</p>A lot of praise", "2</p>", "<p>3</p>", "4</p>Neither praise nor blame", "5</p>", "6</p>", "7</p>A lot of blame"],
+                require_movement: true,
+                slider_width: 800,
+                min: 1,
+                max: 7,
+                step: 1,
+                start: start4,
+                on_finish: function(data){
+                    data.scale_start = start4
+                }
+            };
+            timeline.push(praise_blame);
+            
+            var interesting ={
+                type: 'html-slider-response',
+                stimulus: "<div class = 'instructions'><p><b>Read</b> the story below <b>carefully</b> and answer the questions that follow:</p><br><br><p style='font-size:20px;'><i>" + vignettes_rand[order[k]][k] + "</i></p><br><br></div><p><b>How interesting do you find this story?</b></p>",
+                labels: ["1</p>Very uninteresting", "2</p>", "3</p>", "4</p>Somewhat interesting", "5</p>", "6</p>", "7</p>Very interesting"],
+                require_movement: true,
+                slider_width: 800,
+                min: 1,
+                max: 7,
+                step: 1,
+                start: start5,
+                on_finish: function(data){
+                    data.scale_start = start5
+                }
+            };
+            timeline.push(interesting);
+            
+            var upsetting ={
+                type: 'html-slider-response',
+                stimulus: "<div class = 'instructions'><p><b>Read</b> the story below <b>carefully</b> and answer the questions that follow:</p><br><br><p style='font-size:20px;'><i>" + vignettes_rand[order[k]][k] + "</i></p><br><br></div><p><b>How personally upsetting did you find this story?</b></p>",
+                labels: ["1</p>Not at all upsetting", "2</p>", "3</p>", "4</p>Somewhat upsetting", "5</p>", "6</p>", "7</p>Very upsetting"],
+                require_movement: true,
+                slider_width: 800,
+                min: 1,
+                max: 7,
+                step: 1,
+                start: start6,
+                on_finish: function(data){
+                    data.scale_start = start6
+                }
+            };
+            timeline.push(upsetting);
+            
+            var believable ={
+                type: 'html-slider-response',
+                stimulus: "<div class = 'instructions'><p><b>Read</b> the story below <b>carefully</b> and answer the questions that follow:</p><br><br><p style='font-size:20px;'><i>" + vignettes_rand[order[k]][k] + "</i></p><br><br></div><p><b>How believable do you find this story?</b></p>",
+                labels: ["1</p>Completely unbelievable", "2</p>", "3</p>", "4</p>", "5</p>", "6</p>", "7</p>Completely believable"],
+                require_movement: true,
+                slider_width: 800,
+                min: 1,
+                max: 7,
+                step: 1,
+                start: start7,
+                on_finish: function(data){
+                    data.scale_start = start7
+                }
+            };
+            timeline.push(believable);
+            
+            var random_sample = {
+                type: 'html-slider-response',
+                stimulus: "<div class = 'instructions'><p><b>Read</b> the story below <b>carefully</b> and answer the questions that follow:</p><br><br><p style='font-size:20px;'><i>" + vignettes_rand[order[k]][k] + "</i></p><br><br></div><p><b>Now imagine 100 random people in the same situation. How many of them would do what " + vignettes_rand[4][k] + ' did?</b></p>',
+                labels: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+                min: 0,
+                max: 100,
+                step: 1,
+                start: start8,
+                require_movement: true,
+                slider_width: 800,
+                on_finish: function(data){
+                    data.scale_start = start8
+                }
+            };
+            timeline.push(random_sample);
+            
+            var options = [vignettes_rand[5][k], vignettes_rand[6][k], vignettes_rand[7][k]]
+            var options = jsPsych.randomization.shuffle(options);
+            
+            var mcq = {
+                type: 'survey-multi-choice',
+                questions: [
+                    {
+                        prompt: '<b>' + vignettes_rand[3][k] + '</b>',
+                        name: 'mcq',
+                        options: [options[0], options[1], options[2]],
+                        required: true,
+                        horizontal: false
+                    }
+                ]
+            };
+            timeline.push(mcq);
+        };
+        
+        //With the loop now finished and the trials completed, we present basic demographic questions to participants.
+        //The `survey-multi-choice` trial type allows for multiple questions to be presented at the same time. 
+        var demos1 = {
+            type: 'survey-multi-choice',
+            questions:
+            [
+                {
+                    prompt:'<b>To which gender do you most identify?</b>',
+                    name: 'gender', 
+                    options: ['Male', 'Female', 'Other', 'Prefer not to say'],
+                    required: true,
+                    horizontal: false
+                },
+                {
+                    prompt: '<b>Is English your first language?</b>',
+                    name: 'English',
+                    options: ['Yes', 'No'],
+                    required: true,
+                    horizontal: false
+                },
+                {   prompt: '<b>What is the highest level of education you have completed?</b>',
+                    name:'education',
+                    options: ['Some high school','High school', 'Some college', '2 year degree', '4 year degree', 'Postgraduate/Professional degree/other'],
+                    required: true,
+                    horizontal: false
+                },
+                {
+                    prompt: "<b>Do you usually think of yourself as liberal, moderate, conservative, or something else?</b>",
+                    name: 'ideology',
+                    options: ['Very liberal', 'Liberal', 'Slightly liberal', 'Moderate/Middle-of-the-road', 'Slightly conservative', 'Conservative', 'Very Conservative', 'Other', "Don't know/Not political"],
+                    required: true, 
+                    horizontal: false
+                },
+                {
+                    prompt: '<b>What was the total amount of income you earned during the last year?.</b>',
+                    name: 'income',
+                    options: ['Under $5,000', '$5,000 - $10,000', '$10,000 - $15,000', '$15,000 - $25,000', '$25,000 - $35,000', '$35,000 - $50,000', '$50,000 - $65,000', '$65,000 - $80,000', '$80,000 - $100,000', 'Over $100,000'],
+                    required: true,
+                    horizontal: false
+                },
+            ]
+        };
+        timeline.push(demos1);
+        
+        //We collect Prolific information (this could just as easily be mTurk information or any identifying participant key)
+        var prolific= {
+        type: 'survey-text',
+        questions: [
+                {
+                    prompt: '<br><p><b>Please copy and paste your Prolific ID into the box below:</b>',
+                    name: 'prolific_id',
+                    required: true
+                }
+            ]
+        };
+
+        var link = 'LINK';
+        var conclusion = {
+            type: 'html-button-response',
+            stimulus: '<p>Please copy the link below <b>and click the FINISH button</b>.</p><p>Then paste the link in your browser to recieve your payment. <p>https://app.prolific.co/submissions/complete?cc=1E4114F3</p><p>Thank you.</p>',
+            choices: ['CLICK HERE TO FINISH']
+        };
+        timeline.push(conclusion);
+
+        
+        //At the end of our script, we execute the timeline array, which now contains each of the trials that we have pushed to it, in order.
+        //Some additional options to note:
+        //We show a progress bar to participants as they complete the task
+        //Importantly, we send the data to the firebase reference that we created at the top of the script. This is essential, if we want our data stored. This is achieved using the `on_close` option, similar to `on_finish` but with instructions to execute only when participants leave the webpage.
+        //`on_finish` in this case instructs jsPSych to redirect participants to a page of our choosing. In this case, that's Prolific. `on_close` will execute when this redirect takes place.
+        jsPsych.init({
+            timeline: timeline, 
+            show_progress_bar: true,
+            on_finish: function() {
+                window.location.replace("https://app.prolific.co/submissions/complete?xx=1x1111x1")
+            },
+            on_close: function() {
+                firebase.database().ref(firebase.auth().currentUser.uid).set({
+                    data: jsPsych.data.get().values()
+                });
+            }
+        });
+    </script>
+</html>
